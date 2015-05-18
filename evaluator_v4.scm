@@ -31,6 +31,16 @@
 	    (set-cdr! pair val)
 	    (set-var! var val (cdr frames))))))
 
+;;; INTERNAL REPRESENTATION OF LAMBDAS ---------------------------------------------
+;;; all lambda expressions are converted into internal representations of the form
+;;; ('procedure <parameters> <body> <closure specific environment>)
+;;; we define 3 simple getters to make this clearer
+;;; the conversion to internal representation happens during 'special-form-lambda'
+
+(define (proc-parameters p) (cadr p))
+(define (proc-body p) (caddr p))
+(define (proc-environment p) (cadddr p))
+
 ;;; EVALUATION  --------------------------------------------------------------------
 
 (define (meta-eval exp env)
@@ -52,9 +62,9 @@
   ;; both proc and args have allready been evaluated
   (cond ((primitive-procedure? proc) (apply proc args))
 	((compound-procedure? proc)
-	 (let* ((new-frame (map cons (procedure-parameters proc) args))
-		(extended-env (cons new-frame (procedure-environment proc))))
-	   (eval-sequence (procedure-body proc) extended-env)))
+	 (let* ((new-frame (map cons (proc-parameters proc) args))
+		(extended-env (cons new-frame (proc-environment proc))))
+	   (eval-sequence (proc-body proc) extended-env)))
 	(else (display 'meta-apply-error))))
 
 (define (eval-sequence exps env) 
@@ -131,12 +141,6 @@
     (if  . ,special-form-if)
     (let . ,special-form-let)))
 
-;; INTERNAL REPRESENTATION OF LAMBDAS ---------------------------------------------
-
-(define (procedure-parameters p) (cadr p))
-(define (procedure-body p) (caddr p))
-(define (procedure-environment p) (cadddr p))
-
 ;; PRIMITIVES ---------------------------------------------------------------------
 
 (define primitives
@@ -146,30 +150,15 @@
 ;; REPL ---------------------------------------------------------------------------
 
 (define (repl)
-  (displayer input-prompt)
-  (let ((input (read)))
-    (let ((output (meta-eval input env)))
-      (displayer output-prompt)
-      (if (eq? output 'user-exit-request)
-	  "ciao..."
-	  (begin
-	    (user-print output)
-	    (repl))))))
-
-(define (displayer string)
-  (newline) (display string) (newline))
-
-(define input-prompt "> META-CIRCULAR INPUT... (exit) to exit")
-(define output-prompt "> META-CIRCULAR VALUE:")
-
-(define (user-print object)
-  (cond ((compound-procedure? object)
-	 (display (list 'compound-procedure
-			(procedure-parameters object)
-			(procedure-body object)
-			'<procedure-env>)))
-	((empty-return-value? object) (display ""))
-	(else (display object))))
+  (display "\n?> ")
+  (let ((obj (meta-eval (read) env)))
+    (if (eq? obj 'user-exit-request)
+	'bye
+	(begin
+	  (cond ((compound-procedure? obj) (display (list '<proc> (proc-parameters obj))))
+		((empty-return-value? obj) (display ""))
+		(else (display obj)))
+	  (repl)))))
 
 ;; --------------------------------------------------------------------------------
 
