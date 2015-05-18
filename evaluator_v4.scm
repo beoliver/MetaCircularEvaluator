@@ -1,4 +1,5 @@
-;; ENVIRONMENT LOOKUP  ------------------------------------------------------------
+;;; ENVIRONMENT LOOKUP  ------------------------------------------------------------
+;;; the 'environment' is a list of associative lists (frames)
 
 (define (lookup-in-frames k env)
   (if (null? env) 
@@ -6,15 +7,19 @@
       (or (assoc k (car env))
 	  (lookup-in-frames k (cdr env)))))
 
-;; UPDATING ENVIRONMENT  ----------------------------------------------------------
+;;; UPDATING ENVIRONMENT  ----------------------------------------------------------
 
 (define (define-var! var val frames)
+  ;; add (var . val) pair to head of frames, 
+  ;; or update existing (var . existing-val) in head of frames
   (let ((pair (assoc var (car frames))))
     (if pair 
 	(set-cdr! pair val)
         (set-car! frames (cons (cons var val) (car frames))))))
 
 (define (set-var! var val frames)
+  ;; traverses ALL frames
+  ;; updates existing (var . existing-val) or "error"
   (if (null? frames)
       (begin
 	(display "unknown variable")
@@ -24,13 +29,9 @@
 	    (set-cdr! pair val)
 	    (set-var! var val (cdr frames))))))
 
-;; EVALUATION  --------------------------------------------------------------------
+;;; EVALUATION  --------------------------------------------------------------------
 
 (define (meta-eval exp env)
-  ;; (display "meta eval")
-  ;; (newline)
-  ;; (display exp)
-  ;; (newline)
   (cond ((self-evaluating? exp) exp)
 	((symbol? exp) (let ((pair (lookup-in-frames exp env)))
 			 (if pair ;; a valid pair (KEY . VAL)
@@ -46,6 +47,7 @@
 	(else (display 'meta-eval-error))))
 
 (define (meta-apply proc args)
+  ;; both proc and args have allready been evaluated
   (cond ((primitive-procedure? proc) (apply proc args))
 	((compound-procedure? proc)
 	 (let* ((new-frame (map cons (procedure-parameters proc) args))
@@ -53,13 +55,14 @@
 	   (eval-sequence (procedure-body proc) extended-env)))
 	(else (display 'meta-apply-error))))
 
-(define (eval-sequence exps env) ;; only last value is returned
+(define (eval-sequence exps env) 
+  ;; only last value is returned
   (if (null? (cdr exps))
       (meta-eval (car exps) env)
       (begin (meta-eval (car exps) env)
   	     (eval-sequence (cdr exps) env))))
 
-;; EVALUATION PREDICATES ----------------------------------------------------------
+;;; EVALUATION PREDICATES ----------------------------------------------------------
 
 (define (self-evaluating? exp)
   (or (number? exp) (boolean? exp) (string? exp) (char? exp)))
@@ -75,19 +78,20 @@
 (define (primitive-procedure? exp) (procedure? exp))
 
 (define (empty-return-value? exp)
-  (not (or (self-evaluating? exp)
-	   (symbol? exp)
-	   (list? exp)
-	   (pair? exp)
-	   (procedure? exp))))
+  (not (or (self-evaluating? exp) (symbol? exp) (list? exp) (pair? exp) (procedure? exp))))
 
-;; SPECIAL FORMS ------------------------------------------------------------------
+;;; SPECIAL FORMS ------------------------------------------------------------------
 
 (define (eval-special-form exp env)
+  ;; we use an association table to dispatch calls
+  ;; as this is called from meta-eval, we know that
+  ;; 'exp' is a special form
   ((cdr (assoc (car exp) special-forms)) exp env))
 
 (define (special-form-lambda exp env)
-  (make-procedure exp env))
+  (let ((parameters (cadr exp))
+	(body (cddr exp)))
+    (list 'procedure parameters body env)))
 
 (define (special-form-define exp env)
   (define-var! (cadr exp) (meta-eval (caddr exp) env) env))
@@ -121,11 +125,6 @@
     (let . ,special-form-let)))
 
 ;; INTERNAL REPRESENTATION OF LAMBDAS ---------------------------------------------
-
-(define (make-procedure exp env)
-  (let ((parameters (cadr exp))
-	(body (cddr exp)))
-    (list 'procedure parameters body env)))
 
 (define (procedure-parameters p) (cadr p))
 (define (procedure-body p) (caddr p))
@@ -169,23 +168,5 @@
 (define env (list '() primitives))
 
 ;; --------------------------------------------------------------------------------
-
-(meta-eval '(define kons 
-	      (lambda (a b) 
-		(lambda (p) (p a b)))) 
-	   env)
-
-(meta-eval '(define kar 
-	      (lambda (p) 
-		(p (lambda (a b) a)))) 
-	   env)
-
-(meta-eval '(define kdr 
-	      (lambda (p) 
-		(p (lambda (a b) b)))) 
-	   env)
-
-(meta-eval '(define xs (kons 1 (kons 2 (kons 3 (kons 4 nil))))) env)
-
 
 (repl)
