@@ -135,7 +135,7 @@
 (define special-forms ;; kept SPEARATE from frames
   `((lambda . ,special-form-lambda)
     (define . ,special-form-define)
-    (exit . ,(lambda (a b) 'user-exit-request))
+    (exit . ,(lambda _ 'user-exit-request))
     (set! . ,special-form-set!)    
     (if  . ,special-form-if)
     (let . ,special-form-let)))
