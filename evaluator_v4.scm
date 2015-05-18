@@ -2,7 +2,9 @@
 ;;; the 'environment' is a list of associative lists (frames)
 
 (define (lookup-in-frames k env)
-  (if (null? env) 
+  ;; to allow for variables to store references to #f
+  ;; we return the (var . val) pair if found else just #f
+  (if (null? env)
       #f
       (or (assoc k (car env))
 	  (lookup-in-frames k (cdr env)))))
@@ -83,12 +85,15 @@
 ;;; SPECIAL FORMS ------------------------------------------------------------------
 
 (define (eval-special-form exp env)
-  ;; we use an association table to dispatch calls
-  ;; as this is called from meta-eval, we know that
-  ;; 'exp' is a special form
+  ;; we use an association table to dispatch calls.
+  ;; as 'eval-special-form' is called from 'meta-eval'
+  ;; we know that 'exp' is indeed a special form
   ((cdr (assoc (car exp) special-forms)) exp env))
 
 (define (special-form-lambda exp env)
+  ;; create an internal representation of the lambda
+  ;; we do this so that we can keep track of the the scope
+  ;; of the closure
   (let ((parameters (cadr exp))
 	(body (cddr exp)))
     (list 'procedure parameters body env)))
@@ -108,6 +113,8 @@
 	(meta-eval else-branch env))))
 
 (define (special-form-let exp env)
+  ;; a let expression is just a closure, thus we can re-write it
+  ;; as a lambda expression
   (let* ((let-bindings (cadr exp))
 	 (parameters (map car let-bindings))
 	 (args (map cadr let-bindings))
@@ -133,7 +140,8 @@
 ;; PRIMITIVES ---------------------------------------------------------------------
 
 (define primitives
-  `((+ . ,+) (- . ,-) (* . ,*) (/ . ,/) (nil . nil)))
+  ;; loaded as the first frame of the environment
+  `((+ . ,+) (- . ,-) (* . ,*) (/ . ,/) (nil . nil) (id . ,(lambda (x) x))))
 
 ;; REPL ---------------------------------------------------------------------------
 
