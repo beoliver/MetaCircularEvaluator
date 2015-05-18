@@ -21,11 +21,9 @@
 
 (define (set-var! var val frames)
   ;; traverses ALL frames
-  ;; updates existing (var . existing-val) or "error"
+  ;; updates existing (var . existing-val) or "error" if no match found
   (if (null? frames)
-      (begin
-	(display "unknown variable")
-	(newline))
+      (display "set-var! :: unknown variable\n")
       (let ((pair (assoc var (car frames))))
 	(if pair
 	    (set-cdr! pair val)
@@ -56,7 +54,7 @@
 	((application? exp)
 	 (meta-apply (meta-eval (car exp) env)
 		 (map (lambda (x) (meta-eval x env)) (cdr exp))))
-	(else (display 'meta-eval-error))))
+	(else (for-each display '("meta-eval :: no match for expression - " expr "\n")))))
 
 (define (meta-apply proc args)
   ;; both proc and args have allready been evaluated
@@ -65,7 +63,7 @@
 	 (let* ((new-frame (map cons (proc-parameters proc) args))
 		(extended-env (cons new-frame (proc-environment proc))))
 	   (eval-sequence (proc-body proc) extended-env)))
-	(else (display 'meta-apply-error))))
+	(else (for-each display `("meta-apply :: no match for expression - " ,proc " args:" ,args "\n")))))
 
 (define (eval-sequence exps env) 
   ;; only last value is returned
