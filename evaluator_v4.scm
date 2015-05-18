@@ -156,6 +156,9 @@
 	'bye
 	(begin
 	  (cond ((compound-procedure? obj) (display (list '<proc> (proc-parameters obj))))
+		;; the compound-procedure test is needed as we don't want to display the
+		;; environment of the procedure (that has a pointer to the procedure itself
+		;; which results in an infinite loop of printing
 		((empty-return-value? obj) (display ""))
 		(else (display obj)))
 	  (repl)))))
