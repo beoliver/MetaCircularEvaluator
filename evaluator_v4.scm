@@ -63,7 +63,8 @@
 	 (let* ((new-frame (map cons (proc-parameters proc) args))
 		(extended-env (cons new-frame (proc-environment proc))))
 	   (eval-sequence (proc-body proc) extended-env)))
-	(else (for-each display `("meta-apply :: no match for expression - " ,proc " args:" ,args "\n")))))
+	(else (for-each display `("meta-apply :: no match for expression - " ,proc 
+				  " args - " ,args "\n")))))
 
 (define (eval-sequence exps env) 
   ;; only last value is returned
