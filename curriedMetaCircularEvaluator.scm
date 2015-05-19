@@ -1,3 +1,6 @@
+;;; all procedures are curried by default
+;;; not perfect, but quite nice
+
 ;;; ENVIRONMENT LOOKUP  ------------------------------------------------------------
 ;;; the 'environment' is a list of associative lists (frames)
 
