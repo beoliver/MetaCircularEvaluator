@@ -142,14 +142,26 @@
 
 ;; PRIMITIVES ---------------------------------------------------------------------
 
+(define (applied/and x . xs)
+  (if (null? xs)
+      x
+      (and x (apply applied/and xs))))
+
+(define (applied/or x . xs)
+  (if (null? xs)
+      x
+      (or x (apply applied/or xs))))
+
 (define primitives
   ;; loaded as the first frame of the environment
-  `((+ . ,+) (- . ,-) (* . ,*) (/ . ,/) (nil . nil) (id . ,(lambda (x) x))))
+  `((+ . ,+) (- . ,-) (* . ,*) (/ . ,/) (nil . nil) (id . ,(lambda (x) x))
+    (and . ,applied/and) 
+    (or . ,applied/or)))
 
 ;; REPL ---------------------------------------------------------------------------
 
 (define (repl)
-  (display "\n?> ")
+  (display "\nMETA ?> ")
   (let ((obj (meta-eval (read) env)))
     (if (eq? obj 'user-exit-request)
 	'bye
