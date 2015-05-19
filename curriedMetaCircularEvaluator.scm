@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ;;; user defined procedures are curried by default
 ;;; (define foo (lambda (a b) a))
 ;;; (define a (foo 1))
@@ -6,10 +5,7 @@
 ;;; => 1
 
 ;;; note that foo == (foo) == ((foo))
-=======
-;;; all procedures are curried by default
-;;; not perfect, but quite nice
->>>>>>> origin/master
+
 
 ;;; ENVIRONMENT LOOKUP  ------------------------------------------------------------
 ;;; the 'environment' is a list of associative lists (frames)
