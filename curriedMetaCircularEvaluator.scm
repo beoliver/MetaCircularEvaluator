@@ -1,3 +1,11 @@
+;;; user defined procedures are curried by default
+;;; (define foo (lambda (a b) a))
+;;; (define a (foo 1))
+;;; (a 2)
+;;; => 1
+
+;;; note that foo == (foo) == ((foo))
+
 ;;; ENVIRONMENT LOOKUP  ------------------------------------------------------------
 ;;; the 'environment' is a list of associative lists (frames)
 
@@ -50,7 +58,7 @@
 			       (display "unknown variable: ")
 			       (display exp)
 			       (newline)))))
-	((special-form? exp) (eval-special-form exp env))
+	((special-form? exp) (eval-special-form exp env)) 
 	((application? exp)
 	 (meta-apply (meta-eval (car exp) env)
 		 (map (lambda (x) (meta-eval x env)) (cdr exp))))
@@ -59,11 +67,7 @@
 (define (meta-apply proc args)
   ;; both proc and args have allready been evaluated
   (cond ((primitive-procedure? proc) (apply proc args))
-	((compound-procedure? proc)
-	 (let* ((new-frame (map cons (proc-parameters proc) args))
-		(extended-env (cons new-frame (proc-environment proc))))
-	   (eval-sequence (proc-body proc) extended-env)))
-	((curried-procedure? proc)
+	((compound-procedure? proc) ;; curried by default
 	 (let* ((partial-frame (map cons (proc-parameters proc) args))
 		(remaining-params (drop (length args) (proc-parameters proc)))
 		(extended-env (cons partial-frame (proc-environment proc))))
@@ -71,7 +75,7 @@
 		  (eval-sequence (proc-body proc) extended-env))
 		 (else
 		  (list 
-		   'curried-procedure remaining-params (proc-body proc) extended-env)))))
+		   'procedure remaining-params (proc-body proc) extended-env)))))
 	(else (for-each display `("meta-apply :: no match for expression - " ,proc 
 				  " args - " ,args "\n")))))
 
@@ -102,9 +106,6 @@
 (define (compound-procedure? exp)
   (and (list? exp) (eq? 'procedure (car exp))))
 
-(define (curried-procedure? exp)
-  (and (list? exp) (eq? 'curried-procedure (car exp))))
-
 (define (primitive-procedure? exp) (procedure? exp))
 
 (define (empty-return-value? exp)
@@ -126,11 +127,6 @@
   (let ((parameters (cadr exp))
 	(body (cddr exp)))
     (list 'procedure parameters body env)))
-
-(define (special-form-curried-lambda exp env)
-  (let ((parameters (cadr exp))
-	(body (cddr exp)))
-    (list 'curried-procedure parameters body env)))
 
 (define (special-form-define exp env)
   (define-var! (cadr exp) (meta-eval (caddr exp) env) env))
@@ -157,13 +153,15 @@
 	 (new-exp (cons lambda-form args)))
     (meta-eval new-exp env)))
 
+
 (define special-forms ;; kept SPEARATE from frames
-  `((lambda . ,special-form-curried-lambda)
+  `((lambda . ,special-form-lambda)
     (define . ,special-form-define)
     (exit . ,(lambda _ 'user-exit-request))
     (set! . ,special-form-set!)    
     (if  . ,special-form-if)
     (let . ,special-form-let)))
+
 
 ;; PRIMITIVES ---------------------------------------------------------------------
 
@@ -174,18 +172,6 @@
         (lambda xs
           (curried proc (- arity (length xs)) (append args xs)))))
   (curried proc arity '()))
-
-(define (applicable min max proc)
-  (define (loop proc args)
-    (lambda xs 
-      (set! args (append args xs))
-      (let ((largs (length args)))
-        (if (and (>= largs min) 
-                 (or (eq? max 'infinity)
-                     (<= largs max)))
-            (apply proc args)
-            (loop proc args)))))
-  (loop proc '()))
 
 (define (applied/and x . xs)
   (if (null? xs)
@@ -199,7 +185,7 @@
 
 (define primitives
   ;; loaded as the first frame of the environment
-  `((+ . ,+) 
+  `((+ . ,+)
     (- . ,-) 
     (* . ,*) 
     (/ . ,/) 
@@ -207,6 +193,7 @@
     (id . ,(lambda (x) x))
     (and . ,applied/and) 
     (or . ,applied/or)
+    (list . ,list)
     (cons . ,(curry 2 cons))
 ))
 
@@ -222,9 +209,6 @@
 		;; the compound-procedure test is needed as we don't want to display the
 		;; environment of the procedure (that has a pointer to the procedure itself
 		;; which results in an infinite loop of printing
-		((curried-procedure? obj) 
-		 (display (list '<curried-proc> 
-				(proc-parameters obj))))
 		((empty-return-value? obj) (display ""))
 		(else (display obj)))
 	  (repl)))))
