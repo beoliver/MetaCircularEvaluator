@@ -72,8 +72,7 @@
 	 (let* ((partial-frame (map cons (proc-parameters proc) args))
 		(remaining-params (drop (length args) (proc-parameters proc)))
 		(extended-env (cons partial-frame (proc-environment proc))))
-	   (cond ((null? remaining-params)
-		  (eval-sequence (proc-body proc) extended-env))
+	   (cond ((null? remaining-params) (eval-sequence (proc-body proc) extended-env))
 		 (else (list 'procedure remaining-params (proc-body proc) extended-env)))))
 	(else (for-each display `("meta-apply :: no match for expression - " ,proc 
 				  " args - " ,args "\n")))))
